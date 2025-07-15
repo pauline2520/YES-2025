@@ -1,208 +1,214 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="utf-8">
   <title>Peta Identifikasi Kesesuaian Lahan Pertanian Provinsi DI Yogyakarta</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="css/leaflet.css">
-  <link rel="stylesheet" href="css/qgis2web.css">
-  <link rel="stylesheet" href="css/fontawesome-all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="css/qgis2web.css" />
+  <link rel="stylesheet" href="css/fontawesome-all.min.css" />
+  
   <style>
     html, body, #map {
       height: 100%;
-      width: 100%;
       margin: 0;
       padding: 0;
-      font-family: 'Open Sans', sans-serif;
     }
+
     .legend-panel {
-      background: rgba(255,255,255,0.95);
-      padding: 10px;
-      border-radius: 5px;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+      background: white;
+      padding: 8px;
       font-size: 12px;
+      border-radius: 5px;
       line-height: 18px;
       margin-top: 5px;
+      border: 1px solid #ddd;
     }
+
     .legend-panel i {
+      display: inline-block;
       width: 16px;
       height: 16px;
-      display: inline-block;
       margin-right: 6px;
-      border: 1px solid #555;
       vertical-align: middle;
+      border: 1px solid #555;
     }
-    .leaflet-popup-content th, .leaflet-popup-content td {
-      padding: 4px 8px;
+    
+    .leaflet-control-layers-group-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .leaflet-popup-content {
+      font-size: 13px;
+    }
+
+    .leaflet-popup-content table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .leaflet-popup-content th, td {
       text-align: left;
+      padding: 4px 6px;
+      border-bottom: 1px solid #ddd;
     }
+
     .leaflet-popup-content th {
-      font-weight: 600;
       white-space: nowrap;
+      font-weight: bold;
     }
   </style>
 </head>
-
 <body>
-<div id="map"></div>
+  <div id="map"></div>
 
-<script src="js/leaflet.js"></script>
-<script src="js/qgis2web_expressions.js"></script>
-<script src="js/leaflet.pattern.js"></script>
-<script src="js/leaflet-hash.js"></script>
-<script src="js/Autolinker.min.js"></script>
-<script src="js/rbush.min.js"></script>
-<script src="js/labelgun.min.js"></script>
-<script src="js/labels.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="js/qgis2web_expressions.js"></script>
+  <script src="js/leaflet-hash.js"></script>
+  <script src="js/Autolinker.min.js"></script>
 
-<!-- Data -->
-<script src="data/MayoritasTutupanLahan_1.js"></script>
-<script src="data/IndeksKesesuaianLahanPertanian_2.js"></script>
-<script src="data/BatasKabupaten_4.js"></script>
+  <script src="data/MayoritasTutupanLahan_1.js"></script>
+  <script src="data/IndeksKesesuaianLahanPertanian_2.js"></script>
+  <script src="data/BatasKabupaten_4.js"></script>
 
-<script>
-  var map = L.map('map').fitBounds([[-8.2922, 109.9826], [-7.4546, 110.8597]]);
+  <script>
+    var map = L.map('map').fitBounds([
+      [-8.2922, 109.9826],
+      [-7.4546, 110.8597]
+    ]);
+    
+    var hash = new L.Hash(map);
 
-  var layer_GoogleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    attribution: 'Google Satellite',
-    maxZoom: 20
-  }).addTo(map);
+    // ========== BASEMAPS ==========
+    var googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      attribution: 'Google Satellite'
+    }).addTo(map); // Set as default
 
-  // =====================
-  // Layer Batas Kabupaten
-  // =====================
-  var layer_BatasKabupaten = new L.geoJson(json_BatasKabupaten_4, {
-    style: {
-      color: '#000000',
-      weight: 2,
-      fill: false
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+
+    var baseMaps = {
+      "Google Satellite": googleSat,
+      "OpenStreetMap": osm
+    };
+    
+    // ========== HIGHLIGHT STYLE ==========
+    var highlightStyle = {
+      color: '#FFFF00',
+      weight: 3,
+      fillOpacity: 0.6
+    };
+
+    // ========== INDEKS KESESUAIAN ==========
+    function style_Indeks(f) {
+      const colorMap = {
+        'Sangat Sesuai (S1)': '#2B83BA',
+        'Cukup Sesuai (S2)': '#ABDDA4',
+        'Sesuai Marginal (S3)': '#FEC980',
+        'Tidak Sesuai (N)': '#D7191C'
+      };
+      return {
+        opacity: 1,
+        color: '#333',
+        weight: 1,
+        fillColor: colorMap[f.properties['Cluster']] || '#ccc',
+        fillOpacity: 1
+      };
     }
-  }).addTo(map); // langsung aktif
 
-  // =====================
-  // Layer Kesesuaian Lahan
-  // =====================
-  var defaultStyle = {
-    weight: 1,
-    color: '#333333',
-    opacity: 1,
-    fillOpacity: 1
-  };
-
-  var highlightStyle = {
-    weight: 2,
-    color: '#FFFF00',
-    fillOpacity: 0.7,
-    opacity: 1
-  };
-
-  function style_Indeks(feature) {
-    switch (feature.properties['Cluster']) {
-      case 'Sangat Sesuai (S1)': return { ...defaultStyle, fillColor: '#2B83BA' };
-      case 'Cukup Sesuai (S2)': return { ...defaultStyle, fillColor: '#C7E8AD' };
-      case 'Sesuai Marginal (S3)': return { ...defaultStyle, fillColor: '#FEC980' };
-      case 'Tidak Sesuai (N)': return { ...defaultStyle, fillColor: '#D7191C' };
-      default: return { ...defaultStyle, fillColor: '#AAAAAA' };
-    }
-  }
-
-  function onEach_Indeks(feature, layer) {
-    var props = feature.properties;
-    var popupContent = `
-      <div class="popup-content">
-        <h4>Nama Desa: ${props['NAMOBJ']}</h4>
+    function onEach_Indeks(f, l) {
+      var p = f.properties;
+      l.bindPopup(`
+        <h4>Nama Desa: ${p['NAMOBJ']}</h4>
         <table>
-          <tr><th>Kesesuaian</th><td>${props['Cluster']}</td></tr>
-          <tr><th>Kabupaten</th><td>${props['WADMKK']}</td></tr>
-          <tr><th>Vegetasi</th><td>${props['Dimensi Ve']}</td></tr>
-          <tr><th>Cuaca</th><td>${props['Dimensi Cu']}</td></tr>
-          <tr><th>Tanah</th><td>${props['Dimensi Ta']}</td></tr>
-          <tr><th>Topografi</th><td>${props['Dimensi To']}</td></tr>
-          <tr><th>Aksesibilitas</th><td>${props['Dimensi Ak']}</td></tr>
-          <tr><th>Rekomendasi</th><td>${props['Rekomendas']}</td></tr>
-        </table>
-      </div>`;
-    layer.bindPopup(popupContent, { maxWidth: 300, className: 'custom-popup' });
+          <tr><th>Kabupaten</th><td>${p['WADMKK']}</td></tr>
+          <tr><th>Kesesuaian</th><td>${p['Cluster']}</td></tr>
+          <tr><td colspan="2"><hr></td></tr>
+          <tr><th>Vegetasi</th><td>${p['Dimensi Ve']}</td></tr>
+          <tr><th>Cuaca</th><td>${p['Dimensi Cu']}</td></tr>
+          <tr><th>Tanah</th><td>${p['Dimensi Ta']}</td></tr>
+          <tr><th>Topografi</th><td>${p['Dimensi To']}</td></tr>
+          <tr><th>Akses</th><td>${p['Dimensi Ak']}</td></tr>
+          <tr><td colspan="2"><hr></td></tr>
+          <tr><th>Rekomendasi</th><td>${p['Rekomendas']}</td></tr>
+        </table>`);
 
-    layer.on({
-      mouseover: function(e) {
-        var layer = e.target;
-        layer.setStyle(highlightStyle);
-        layer.bringToFront();
-      },
-      mouseout: function(e) {
-        layer_Indeks.resetStyle(e.target);
+      l.on({
+        mouseover: e => e.target.setStyle(highlightStyle),
+        mouseout: e => layer_Indeks.resetStyle(e.target)
+      });
+    }
+
+    var layer_Indeks = new L.geoJson(json_IndeksKesesuaianLahanPertanian_2, {
+      style: style_Indeks,
+      onEachFeature: onEach_Indeks
+    });
+
+    // ========== TUTUPAN LAHAN (WARNA BARU YANG KONTRAS) ==========
+    function getTutupanLahanName(val) {
+      const nameMap = { 1: 'Hutan', 4: 'Lahan Pertanian', 5: 'Semak Belukar', 6: 'Permukiman' };
+      return nameMap[val] || 'Lainnya';
+    }
+
+    function style_Landcover(f) {
+      // Palet warna baru yang berbeda dari layer kesesuaian lahan
+      const colorMap = {
+        1: '#8A3677',  // Ungu Tua (Hutan)
+        4: '#B08D57',  // Coklat (Lahan Pertanian)
+        5: '#A8A878',  // Abu-abu kehijauan (Semak Belukar)
+        6: '#696969'   // Abu-abu Tua (Permukiman)
+      };
+      return {
+        color: '#444',
+        weight: 0.8,
+        fillColor: colorMap[f.properties['_majority']] || '#bbb',
+        fillOpacity: 1
+      };
+    }
+
+    function onEach_Landcover(f, l) {
+      l.bindPopup(`
+        <b>Nama Desa:</b> ${f.properties['NAMOBJ']}<br>
+        <b>Kabupaten:</b> ${f.properties['WADMKK']}<br>
+        <b>Tutupan Lahan:</b> ${getTutupanLahanName(f.properties['_majority'])}
+      `);
+      
+      l.on({
+        mouseover: e => e.target.setStyle(highlightStyle),
+        mouseout: e => layer_Landcover.resetStyle(e.target)
+      });
+    }
+
+    var layer_Landcover = new L.geoJson(json_MayoritasTutupanLahan_1, {
+      style: style_Landcover,
+      onEachFeature: onEach_Landcover
+    });
+
+    // ========== BATAS KABUPATEN ==========
+    var layer_BatasKabupaten = new L.geoJson(json_BatasKabupaten_4, {
+      style: {
+        color: '#000000',
+        weight: 2.5,
+        fill: false,
+        dashArray: '5, 5' // Garis putus-putus
       }
     });
-  }
 
-  var layer_Indeks = new L.geoJson(json_IndeksKesesuaianLahanPertanian_2, {
-    style: style_Indeks,
-    onEachFeature: onEach_Indeks
-  }).addTo(map); // default aktif
+    // ========== LAYER CONTROL (TERSTRUKTUR) ==========
+    var overlayMaps = {
+      // Key berisi nama layer beserta legendanya
+      '<div>Kesesuaian Lahan</div><div class="legend-panel"><i style="background:#2B83BA"></i> Sangat Sesuai (S1)<br><i style="background:#ABDDA4"></i> Cukup Sesuai (S2)<br><i style="background:#FEC980"></i> Sesuai Marginal (S3)<br><i style="background:#D7191C"></i> Tidak Sesuai (N)</div>': layer_Indeks,
+      '<div>Tutupan Lahan</div><div class="legend-panel"><i style="background:#8A3677"></i> Hutan<br><i style="background:#B08D57"></i> Lahan Pertanian<br><i style="background:#A8A878"></i> Semak Belukar<br><i style="background:#696969"></i> Permukiman</div>': layer_Landcover,
+      "Batas Kabupaten": layer_BatasKabupaten,
+    };
 
-  // =====================
-  // Layer Tutupan Lahan
-  // =====================
-  function style_Landcover(feature) {
-    switch (Number(feature.properties['_majority'])) {
-      case 1: return { color: '#3B9C9C', weight: 1, fillOpacity: 0.7 }; // Trees
-      case 4: return { color: '#FF8000', weight: 1, fillOpacity: 0.7 }; // Crops
-      case 5: return { color: '#A38C6A', weight: 1, fillOpacity: 0.7 }; // Shrub
-      case 6: return { color: '#5C3C92', weight: 1, fillOpacity: 0.7 }; // Built
-      default: return { color: '#CCCCCC', weight: 1, fillOpacity: 0.7 };
-    }
-  }
+    L.control.layers(baseMaps, overlayMaps, {
+      collapsed: false,
+      position: 'topright'
+    }).addTo(map);
 
-  function onEach_Landcover(feature, layer) {
-    var props = feature.properties;
-    var kategori = {
-      1: "Hutan", 4: "Lahan Pertanian", 5: "Semak Belukar", 6: "Permukiman"
-    }[props['_majority']] || "Lainnya";
-
-    var popup = `<b>Nama Desa:</b> ${props['NAMOBJ']}<br><b>Kabupaten:</b> ${props['WADMKK']}<br><b>Tutupan Lahan:</b> ${kategori}`;
-    layer.bindPopup(popup);
-  }
-
-  var layer_Landcover = new L.geoJson(json_MayoritasTutupanLahan_1, {
-    style: style_Landcover,
-    onEachFeature: onEach_Landcover
-  }); // tidak langsung ditampilkan
-
-  // =====================
-  // Layer Control & Legends
-  // =====================
-  var baseMaps = {
-    "Satelit Google": layer_GoogleSatellite,
-    "Batas Kabupaten": layer_BatasKabupaten
-  };
-
-  var overlayMaps = {
-    "Indeks Kesesuaian Lahan": layer_Indeks,
-    "Tutupan Lahan": layer_Landcover
-  };
-
-  var control = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
-  // Tambahkan legenda manual di bawah layer control
-  var legend = L.control({ position: "topright" });
-  legend.onAdd = function (map) {
-    var div = L.DomUtil.create("div", "legend-panel");
-    div.innerHTML = `
-      <strong>Indeks Kesesuaian:</strong><br>
-      <i style="background:#2B83BA"></i> Sangat Sesuai (S1)<br>
-      <i style="background:#C7E8AD"></i> Cukup Sesuai (S2)<br>
-      <i style="background:#FEC980"></i> Sesuai Marginal (S3)<br>
-      <i style="background:#D7191C"></i> Tidak Sesuai (N)<br><br>
-      <strong>Tutupan Lahan:</strong><br>
-      <i style="background:#3B9C9C"></i> Hutan<br>
-      <i style="background:#FF8000"></i> Lahan Pertanian<br>
-      <i style="background:#A38C6A"></i> Semak Belukar<br>
-      <i style="background:#5C3C92"></i> Permukiman
-    `;
-    return div;
-  };
-  legend.addTo(map);
-</script>
+  </script>
 </body>
 </html>
