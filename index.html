@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="utf-8">
-  <title>Peta Kesesuaian Lahan Pertanian</title>
+  <title>Peta Identifikasi Kesesuaian Lahan Pertanian Provinsi DI Yogyakarta</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="css/leaflet.css" />
   <link rel="stylesheet" href="css/qgis2web.css" />
@@ -83,15 +83,16 @@
 
     var highlightStyle = {
       color: '#FFFF00',
-      weight: 3,
-      fillOpacity: 1
+      weight: 2,
+      fillColor: '#FFFF66',  // Soft yellow fill
+      fillOpacity: 0.6
     };
 
-    // ===== Indeks Kesesuaian =====
+    // ========== INDEKS KESESUAIAN ==========
     function style_Indeks(f) {
       switch (f.properties['Cluster']) {
         case 'Sangat Sesuai (S1)': return {...defaultStyle, fillColor: '#2B83BA'};
-        case 'Cukup Sesuai (S2)': return {...defaultStyle, fillColor: '#C7E8AD'};
+        case 'Cukup Sesuai (S2)': return {...defaultStyle, fillColor: '#ABDDA4'};
         case 'Sesuai Marginal (S3)': return {...defaultStyle, fillColor: '#FEC980'};
         case 'Tidak Sesuai (N)': return {...defaultStyle, fillColor: '#D7191C'};
         default: return {...defaultStyle, fillColor: '#ccc'};
@@ -115,9 +116,15 @@
           <tr><th>Rekomendasi</th><td>${p['Rekomendas']}</td></tr>
         </table>`;
       l.bindPopup(popupContent);
+
       l.on({
-        mouseover: e => e.target.setStyle(highlightStyle),
-        mouseout: e => layer_Indeks.resetStyle(e.target)
+        mouseover: e => {
+          e.target.setStyle(highlightStyle);
+          e.target.bringToFront();
+        },
+        mouseout: e => {
+          layer_Indeks.resetStyle(e.target);
+        }
       });
     }
 
@@ -126,7 +133,7 @@
       onEachFeature: onEach_Indeks
     }).addTo(map);
 
-    // ===== Tutupan Lahan =====
+    // ========== TUTUPAN LAHAN ==========
     function getTutupanLahanName(val) {
       const map = {
         1: 'Hutan',
@@ -139,15 +146,15 @@
 
     function style_Landcover(f) {
       const colors = {
-        1: '#397d49',
-        4: '#e49635',
-        5: '#dfc35a',
-        6: '#c4281b'
+        1: '#70a35e',  // Hijau lembut
+        4: '#f1b24a',  // Oranye tanah
+        5: '#cdd465',  // Kuning kehijauan
+        6: '#ac3b30'   // Merah bata
       };
       return {
-        color: '#333',
-        weight: 0.5,
-        fillColor: colors[f.properties['_majority']] || '#999',
+        color: '#444',
+        weight: 0.8,
+        fillColor: colors[f.properties['_majority']] || '#bbb',
         fillOpacity: 1
       };
     }
@@ -163,9 +170,9 @@
     var layer_Landcover = new L.geoJson(json_MayoritasTutupanLahan_1, {
       style: style_Landcover,
       onEachFeature: onEach_Landcover
-    }).addTo(map);
+    });
 
-    // ===== Batas Kabupaten =====
+    // ========== BATAS KABUPATEN ==========
     var layer_BatasKabupaten = new L.geoJson(json_BatasKabupaten_4, {
       style: {
         color: '#000',
@@ -174,20 +181,19 @@
       }
     }).addTo(map);
 
-    // ===== Layer Control with Legend =====
+    // ========== LAYER CONTROL ==========
     var baseMaps = { "Google Satellite": basemap };
-    var overlayMaps = {};
 
-    var layerControl = L.control.layers(baseMaps, overlayMaps, {
+    var layerControl = L.control.layers(baseMaps, null, {
       collapsed: false,
       position: 'topright'
-    }).addTo(map);
+    });
 
     layerControl.addOverlay(layer_Indeks, `
       <div>Kesesuaian Lahan</div>
       <div class="legend-panel">
         <i style="background:#2B83BA"></i> Sangat Sesuai (S1)<br>
-        <i style="background:#C7E8AD"></i> Cukup Sesuai (S2)<br>
+        <i style="background:#ABDDA4"></i> Cukup Sesuai (S2)<br>
         <i style="background:#FEC980"></i> Sesuai Marginal (S3)<br>
         <i style="background:#D7191C"></i> Tidak Sesuai (N)
       </div>
@@ -196,14 +202,16 @@
     layerControl.addOverlay(layer_Landcover, `
       <div>Tutupan Lahan</div>
       <div class="legend-panel">
-        <i style="background:#397d49"></i> Hutan<br>
-        <i style="background:#e49635"></i> Lahan Pertanian<br>
-        <i style="background:#dfc35a"></i> Semak Belukar<br>
-        <i style="background:#c4281b"></i> Permukiman
+        <i style="background:#70a35e"></i> Hutan<br>
+        <i style="background:#f1b24a"></i> Lahan Pertanian<br>
+        <i style="background:#cdd465"></i> Semak Belukar<br>
+        <i style="background:#ac3b30"></i> Permukiman
       </div>
     `);
 
     layerControl.addOverlay(layer_BatasKabupaten, "Batas Kabupaten");
+
+    layerControl.addTo(map);
   </script>
 </body>
 </html>
