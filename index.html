@@ -124,25 +124,25 @@
     var layer_Indeks = new L.geoJson(json_IndeksKesesuaianLahanPertanian_2, {
       style: style_Indeks,
       onEachFeature: onEach_Indeks
-    }).addTo(map);
+    }).addTo(map); // <-- Ini yang aktif secara default
 
-    // ===== Tutupan Lahan =====
+    // ===== Mayoritas Tutupan Lahan =====
     function getTutupanLahanName(val) {
       const map = {
-        1: 'Hutan',
+        1: 'Pepohonan (Hutan)',
         4: 'Lahan Pertanian',
         5: 'Semak Belukar',
-        6: 'Permukiman'
+        6: 'Bangunan'
       };
       return map[val] || 'Lainnya';
     }
 
     function style_Landcover(f) {
       const colors = {
-        1: '#397d49',
-        4: '#e49635',
-        5: '#dfc35a',
-        6: '#c4281b'
+        1: '#004d00',   // Pepohonan (Hutan)
+        4: '#00b04f',   // Lahan Pertanian
+        5: '#ffb84d',   // Semak Belukar
+        6: '#ff5f00'    // Bangunan
       };
       return {
         color: '#333',
@@ -153,17 +153,22 @@
     }
 
     function onEach_Landcover(f, l) {
+      var p = f.properties;
       l.bindPopup(`
-        <b>Nama Desa:</b> ${f.properties['NAMOBJ']}<br>
-        <b>Kabupaten:</b> ${f.properties['WADMKK']}<br>
-        <b>Tutupan Lahan:</b> ${getTutupanLahanName(f.properties['_majority'])}
+        <b>Nama Desa:</b> ${p['NAMOBJ']}<br>
+        <b>Kabupaten:</b> ${p['WADMKK']}<br>
+        <b>Mayoritas Tutupan Lahan:</b> ${getTutupanLahanName(p['_majority'])}
       `);
+      l.on({
+        mouseover: e => e.target.setStyle(highlightStyle),
+        mouseout: e => layer_Landcover.resetStyle(e.target)
+      });
     }
 
     var layer_Landcover = new L.geoJson(json_MayoritasTutupanLahan_1, {
       style: style_Landcover,
       onEachFeature: onEach_Landcover
-    }).addTo(map);
+    });
 
     // ===== Batas Kabupaten =====
     var layer_BatasKabupaten = new L.geoJson(json_BatasKabupaten_4, {
@@ -194,12 +199,12 @@
     `);
 
     layerControl.addOverlay(layer_Landcover, `
-      <div>Tutupan Lahan</div>
+      <div>Mayoritas Tutupan Lahan</div>
       <div class="legend-panel">
-        <i style="background:#397d49"></i> Hutan<br>
-        <i style="background:#e49635"></i> Lahan Pertanian<br>
-        <i style="background:#dfc35a"></i> Semak Belukar<br>
-        <i style="background:#c4281b"></i> Permukiman
+        <i style="background:#ff5f00"></i> Bangunan<br>
+        <i style="background:#ffb84d"></i> Semak Belukar<br>
+        <i style="background:#00b04f"></i> Lahan Pertanian<br>
+        <i style="background:#004d00"></i> Pepohonan (Hutan)
       </div>
     `);
 
