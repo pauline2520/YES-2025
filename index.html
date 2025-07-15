@@ -173,13 +173,13 @@
   // Layer Control & Legends
   // =====================
   var baseMaps = {
-    "Satelit Google": layer_GoogleSatellite
+    "Satelit Google": layer_GoogleSatellite,
+    "Batas Kabupaten": layer_BatasKabupaten
   };
 
   var overlayMaps = {
     "Indeks Kesesuaian Lahan": layer_Indeks,
-    "Tutupan Lahan": layer_Landcover,
-    "Batas Kabupaten": layer_BatasKabupaten
+    "Tutupan Lahan": layer_Landcover
   };
 
   var control = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
