@@ -7,22 +7,25 @@
   <link rel="stylesheet" href="css/leaflet.css">
   <link rel="stylesheet" href="css/qgis2web.css">
   <link rel="stylesheet" href="css/fontawesome-all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
   <style>
     html, body, #map {
       height: 100%;
       width: 100%;
       margin: 0;
       padding: 0;
+      font-family: 'Open Sans', sans-serif;
     }
     
     /* Improved legend styling */
     .legend {
-      background: white;
-      padding: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 12px;
       border-radius: 5px;
       box-shadow: 0 1px 5px rgba(0,0,0,0.2);
-      font-size: 12px;
+      font-size: 13px;
       line-height: 18px;
+      color: #333;
     }
     
     .legend i {
@@ -31,31 +34,79 @@
       float: left;
       margin-right: 8px;
       opacity: 1;
-      border: 1px solid #777;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.2);
     }
     
     .legend h4 {
-      margin: 0 0 5px 0;
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    /* Improved popup styling */
+    .leaflet-popup-content {
+      min-width: 200px;
       font-size: 13px;
-      font-weight: bold;
     }
     
-    /* Layer control with integrated legends */
+    .leaflet-popup-content table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .leaflet-popup-content th, 
+    .leaflet-popup-content td {
+      padding: 4px 8px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .leaflet-popup-content th {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    
+    /* Layer control styling */
+    .leaflet-control-layers {
+      border-radius: 5px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+      background: rgba(255, 255, 255, 0.9);
+    }
+    
     .leaflet-control-layers-expanded {
-      padding: 6px 10px;
+      padding: 8px;
     }
     
-    .layer-legend {
-      margin-top: 5px;
-      padding: 5px;
-      background: rgba(255,255,255,0.8);
-      border-radius: 3px;
+    .leaflet-control-layers label {
+      font-size: 13px;
+    }
+    
+    /* Attribution control */
+    .leaflet-control-attribution {
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.8);
+    }
+    
+    /* Loading indicator */
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 1000;
+      display: none;
     }
   </style>
 </head>
 
 <body>
   <div id="map"></div>
+  <div id="loading">Memuat peta...</div>
 
   <script src="js/leaflet.js"></script>
   <script src="js/qgis2web_expressions.js"></script>
@@ -72,39 +123,87 @@
   <script src="data/BatasKabupaten_4.js"></script>
 
   <script>
-    var map = L.map('map').fitBounds([[-8.2922, 109.9826], [-7.4546, 110.8597]]);
+    // Show loading indicator
+    document.getElementById('loading').style.display = 'block';
+    
+    // Initialize map with better view
+    var map = L.map('map', {
+      center: [-7.8734, 110.4211], // Centered around the middle of the bounds
+      zoom: 10,
+      zoomControl: true,
+      preferCanvas: true // Better performance for large datasets
+    }).fitBounds([[-8.2922, 109.9826], [-7.4546, 110.8597]]);
+    
     var hash = new L.Hash(map);
+    
+    // Add loading indicator for layers
+    var loadingControl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd: function(map) {
+        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        container.innerHTML = '<div id="layer-loading" style="display:none; background:white; padding:5px;">Memuat layer...</div>';
+        return container;
+      }
+    });
+    map.addControl(new loadingControl());
 
-    // Basemap
-    var layer_GoogleSatellite_0 = L.tileLayer(
+    // Basemap options
+    var googleSatellite = L.tileLayer(
       'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
         attribution: 'Google Satellite',
-        opacity: 1.0
-      }).addTo(map);
+        opacity: 1.0,
+        maxZoom: 20
+      });
+      
+    var googleHybrid = L.tileLayer(
+      'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: 'Google Hybrid',
+        opacity: 1.0,
+        maxZoom: 20
+      });
+      
+    var googleTerrain = L.tileLayer(
+      'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+        attribution: 'Google Terrain',
+        opacity: 1.0,
+        maxZoom: 20
+      });
+      
+    var openStreetMap = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'OpenStreetMap',
+        opacity: 1.0,
+        maxZoom: 19
+      });
 
-    // Style default
+    // Add default basemap
+    googleSatellite.addTo(map);
+
+    // Style definitions with better visual hierarchy
     var defaultStyle = {
       opacity: 1,
       color: '#232323',
-      weight: 1.0,
-      fillOpacity: 1.0  // Changed to full opacity
+      weight: 0.8,
+      fillOpacity: 0.8,
+      stroke: true
     };
 
     var highlightStyle = {
       weight: 3,
       color: '#FFFF00',
-      fillOpacity: 1.0  // Changed to full opacity
+      fillOpacity: 0.7,
+      dashArray: ''
     };
 
     // ===============================
-    // Indeks Kesesuaian Lahan
+    // Indeks Kesesuaian Lahan (Main layer)
     // ===============================
     function style_Indeks(feature) {
       switch (feature.properties['Cluster']) {
-        case 'Tidak Sesuai (N)': return {...defaultStyle, fillColor: '#D7191C'};
-        case 'Sesuai Marginal (S3)': return {...defaultStyle, fillColor: '#FEC980'};
-        case 'Cukup Sesuai (S2)': return {...defaultStyle, fillColor: '#C7E8AD'};
-        case 'Sangat Sesuai (S1)': return {...defaultStyle, fillColor: '#2B83BA'};
+        case 'Tidak Sesuai (N)': return {...defaultStyle, fillColor: '#D7191C', fillOpacity: 0.8};
+        case 'Sesuai Marginal (S3)': return {...defaultStyle, fillColor: '#FEC980', fillOpacity: 0.8};
+        case 'Cukup Sesuai (S2)': return {...defaultStyle, fillColor: '#C7E8AD', fillOpacity: 0.8};
+        case 'Sangat Sesuai (S1)': return {...defaultStyle, fillColor: '#2B83BA', fillOpacity: 0.8};
         default: return {...defaultStyle, fillColor: '#888888'};
       }
     }
@@ -112,34 +211,54 @@
     function onEach_Indeks(feature, layer) {
       var props = feature.properties;
       var popupContent = `
-        <table>
-          <tr><th>Cluster</th><td>${props['Cluster']}</td></tr>
-          <tr><th>Desa</th><td>${props['NAMOBJ']}</td></tr>
-          <tr><th>Kabupaten</th><td>${props['WADMKK']}</td></tr>
-        </table>`;
-      layer.bindPopup(popupContent);
+        <div class="popup-content">
+          <h4>${props['NAMOBJ']}</h4>
+          <table>
+            <tr><th>Kesesuaian</th><td>${props['Cluster']}</td></tr>
+            <tr><th>Kabupaten</th><td>${props['WADMKK']}</td></tr>
+            <tr><th colspan="2"><hr style="margin:5px 0;"></th></tr>
+            <tr><th>Vegetasi</th><td>${props['Dimensi Ve']}</td></tr>
+            <tr><th>Cuaca</th><td>${props['Dimensi Cu']}</td></tr>
+            <tr><th>Tanah</th><td>${props['Dimensi Ta']}</td></tr>
+            <tr><th>Topografi</th><td>${props['Dimensi To']}</td></tr>
+            <tr><th>Aksesibilitas</th><td>${props['Dimensi Ak']}</td></tr>
+            <tr><th colspan="2"><hr style="margin:5px 0;"></th></tr>
+            <tr><th>Rekomendasi</th><td>${props['Rekomendas']}</td></tr>
+          </table>
+        </div>`;
+      layer.bindPopup(popupContent, {
+        maxWidth: 300,
+        className: 'custom-popup'
+      });
 
       layer.on({
-        mouseover: e => e.target.setStyle(highlightStyle),
-        mouseout: e => layer_Indeks.resetStyle(e.target)
+        mouseover: function(e) {
+          e.target.setStyle(highlightStyle);
+          e.target.bringToFront();
+          document.getElementById('map').style.cursor = 'pointer';
+        },
+        mouseout: function(e) {
+          layer_Indeks.resetStyle(e.target);
+          document.getElementById('map').style.cursor = '';
+        }
       });
     }
 
     var layer_Indeks = new L.geoJson(json_IndeksKesesuaianLahanPertanian_2, {
       style: style_Indeks,
       onEachFeature: onEach_Indeks
-    });
+    }).addTo(map);
 
     // ===============================
-    // Mayoritas Tutupan Lahan (Fixed opacity)
+    // Mayoritas Tutupan Lahan
     // ===============================
     function style_Landcover(feature) {
       switch (Number(feature.properties['landcover'])) {
-        case 1: return {color: '#397d49', weight: 0, fillOpacity: 1}; // Trees
-        case 4: return {color: '#e49635', weight: 0, fillOpacity: 1}; // Crops
-        case 5: return {color: '#dfc35a', weight: 0, fillOpacity: 1}; // Shrub
-        case 6: return {color: '#c4281b', weight: 0, fillOpacity: 1}; // Built
-        default: return {color: '#cccccc', weight: 0, fillOpacity: 1}; // Others
+        case 1: return {color: '#397d49', weight: 0, fillOpacity: 0.6}; // Trees
+        case 4: return {color: '#e49635', weight: 0, fillOpacity: 0.6}; // Crops
+        case 5: return {color: '#dfc35a', weight: 0, fillOpacity: 0.6}; // Shrub
+        case 6: return {color: '#c4281b', weight: 0, fillOpacity: 0.6}; // Built
+        default: return {color: '#cccccc', weight: 0, fillOpacity: 0.6}; // Others
       }
     }
 
@@ -148,59 +267,101 @@
     });
 
     // ===============================
-    // Batas Kabupaten
+    // Batas Kabupaten (hitam tebal)
     // ===============================
     var layer_BatasKabupaten = new L.geoJson(json_BatasKabupaten_4, {
-      style: { color: '#000000', weight: 2.5, opacity: 1 }
+      style: { 
+        color: '#000000', 
+        weight: 2.5,
+        opacity: 0.8,
+        dashArray: '5, 5',
+        fill: false
+      }
     });
 
     // ===============================
-    // Kontrol Layer dengan Legenda Terintegrasi
+    // Layer Control with more options
     // ===============================
     var baseMaps = {
-      "Google Satellite": layer_GoogleSatellite_0
+      "Satelit (Google)": googleSatellite,
+      "Hybrid (Google)": googleHybrid,
+      "Topografi (Google)": googleTerrain,
+      "OpenStreetMap": openStreetMap
     };
 
-    // Create custom control with legend
-    var overlayControl = L.control.layers(baseMaps, null, {
-      collapsed: false,
-      position: 'topright'
+    var overlayMaps = {
+      "Kesesuaian Lahan": layer_Indeks,
+      "Tutupan Lahan": layer_Landcover,
+      "Batas Administrasi": layer_BatasKabupaten
+    };
+
+    L.control.layers(baseMaps, overlayMaps, {
+      collapsed: true,
+      position: 'topright',
+      autoZIndex: true
+    }).addTo(map);
+
+    // ===============================
+    // Legends (improved with multiple legends)
+    // ===============================
+    // Legend for Land Suitability
+    var legendSuitability = L.control({ position: 'bottomright' });
+    legendSuitability.onAdd = function () {
+      var div = L.DomUtil.create('div', 'legend');
+      div.innerHTML = `
+        <h4>Kesesuaian Lahan</h4>
+        <i style="background:#2B83BA"></i> Sangat Sesuai (S1)<br>
+        <i style="background:#C7E8AD"></i> Cukup Sesuai (S2)<br>
+        <i style="background:#FEC980"></i> Sesuai Marginal (S3)<br>
+        <i style="background:#D7191C"></i> Tidak Sesuai (N)`;
+      return div;
+    };
+    legendSuitability.addTo(map);
+    
+    // Legend for Land Cover
+    var legendLandcover = L.control({ position: 'bottomright' });
+    legendLandcover.onAdd = function () {
+      var div = L.DomUtil.create('div', 'legend');
+      div.innerHTML = `
+        <h4>Tutupan Lahan</h4>
+        <i style="background:#397d49"></i> Hutan<br>
+        <i style="background:#e49635"></i> Lahan Pertanian<br>
+        <i style="background:#dfc35a"></i> Semak Belukar<br>
+        <i style="background:#c4281b"></i> Permukiman`;
+      return div;
+    };
+    
+    // Initially only show suitability legend
+    legendLandcover.addTo(map);
+    legendSuitability.addTo(map);
+    
+    // Toggle legends based on layer visibility
+    map.on('overlayadd overlayremove', function(event) {
+      if (event.name === "Tutupan Lahan") {
+        if (event.type === 'overlayadd') {
+          legendLandcover.addTo(map);
+        } else {
+          map.removeControl(legendLandcover);
+        }
+      }
     });
+
+    // Add scale control
+    L.control.scale({position: 'bottomleft', imperial: false}).addTo(map);
     
-    // Add overlays with legends
-    overlayControl.addOverlay(layer_Indeks, `
-      <div>
-        <span>Indeks Kesesuaian Lahan Pertanian</span>
-        <div class="layer-legend">
-          <i style="background:#2B83BA"></i> Sangat Sesuai (S1)<br>
-          <i style="background:#C7E8AD"></i> Cukup Sesuai (S2)<br>
-          <i style="background:#FEC980"></i> Sesuai Marginal (S3)<br>
-          <i style="background:#D7191C"></i> Tidak Sesuai (N)
-        </div>
-      </div>
-    `);
+    // Add fullscreen control if the library is available
+    if (typeof L.control.fullscreen !== 'undefined') {
+      L.control.fullscreen({
+        position: 'topright',
+        title: 'Toggle Fullscreen',
+        titleCancel: 'Exit Fullscreen'
+      }).addTo(map);
+    }
     
-    overlayControl.addOverlay(layer_Landcover, `
-      <div>
-        <span>Mayoritas Tutupan Lahan</span>
-        <div class="layer-legend">
-          <i style="background:#397d49"></i> Hutan<br>
-          <i style="background:#e49635"></i> Lahan Pertanian<br>
-          <i style="background:#dfc35a"></i> Semak Belukar<br>
-          <i style="background:#c4281b"></i> Permukiman
-        </div>
-      </div>
-    `);
-    
-    overlayControl.addOverlay(layer_BatasKabupaten, "Batas Kabupaten");
-    
-    // Add control to map
-    overlayControl.addTo(map);
-    
-    // Add all layers by default
-    layer_Indeks.addTo(map);
-    layer_Landcover.addTo(map);
-    layer_BatasKabupaten.addTo(map);
+    // Hide loading indicator when all layers are loaded
+    setTimeout(function() {
+      document.getElementById('loading').style.display = 'none';
+    }, 1000);
   </script>
 </body>
 </html>
