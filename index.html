@@ -146,11 +146,11 @@
   // =====================
   function style_Landcover(feature) {
     switch (Number(feature.properties['_majority'])) {
-      case 1: return { color: '#3B9C9C', weight: 1, fillOpacity: 1 }; // Trees
-      case 4: return { color: '#FF8000', weight: 1, fillOpacity: 1 }; // Crops
-      case 5: return { color: '#A38C6A', weight: 1, fillOpacity: 1 }; // Shrub
-      case 6: return { color: '#5C3C92', weight: 1, fillOpacity: 1 }; // Built
-      default: return { color: '#CCCCCC', weight: 1, fillOpacity: 1 };
+      case 1: return { color: '#3B9C9C', weight: 1, fillOpacity: 0.7 }; // Trees
+      case 4: return { color: '#FF8000', weight: 1, fillOpacity: 0.7 }; // Crops
+      case 5: return { color: '#A38C6A', weight: 1, fillOpacity: 0.7 }; // Shrub
+      case 6: return { color: '#5C3C92', weight: 1, fillOpacity: 0.7 }; // Built
+      default: return { color: '#CCCCCC', weight: 1, fillOpacity: 0.7 };
     }
   }
 
